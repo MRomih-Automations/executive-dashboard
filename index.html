@@ -292,9 +292,9 @@
           <p>Founder Executive Command Center</p>
         </div>
       </div>
-      <div class="status-badge">
+      <div class="status-badge" id="cloudStatusBadge">
         <span class="pulse-dot"></span>
-        24/7 CLOUD ACTIVE
+        <span id="cloudStatusText">24/7 CLOUD ACTIVE</span>
       </div>
     </header>
 
@@ -425,7 +425,7 @@
             Scans GitHub issue comments for verified Algora escrow bots (<60 days old, 0 competing PRs). Alerts phone instantly.
           </p>
         </div>
-        <span style="font-size: 12px; color: var(--accent); font-family: 'JetBrains Mono', monospace;">Last Run: 13s / Succeeded</span>
+        <span id="scoutHeartbeatMeta" style="font-size: 12px; color: var(--accent); font-family: 'JetBrains Mono', monospace;">Live Heartbeat: Syncing...</span>
       </div>
 
       <div class="channel-card">
@@ -502,6 +502,37 @@
         updateDisplay();
       }, 900);
     }
+
+    function timeAgo(dateString) {
+      if (!dateString) return "Active";
+      const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
+      if (diff < 60) return "Just now (" + Math.max(1, diff) + "s ago)";
+      if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+      return Math.floor(diff / 3600) + "h ago";
+    }
+
+    async function loadTelemetry() {
+      try {
+        const res = await fetch("/api/telemetry");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.cloud_cron) {
+          const meta = document.getElementById("scoutHeartbeatMeta");
+          if (meta) {
+            meta.textContent = `Live Run: ${timeAgo(data.cloud_cron.last_run_timestamp)} • ${data.cloud_cron.issues_scanned} scanned`;
+          }
+          const bannerDesc = document.querySelector(".cron-info p");
+          if (bannerDesc) {
+            bannerDesc.textContent = `Running on GitHub Actions cloud every 30m. Last check: ${timeAgo(data.cloud_cron.last_run_timestamp)} (${data.cloud_cron.issues_scanned} candidate issues scanned).`;
+          }
+        }
+      } catch (e) {
+        console.warn("Telemetry fetch error:", e);
+      }
+    }
+
+    loadTelemetry();
+    setInterval(loadTelemetry, 30000);
   </script>
 </body>
 </html>
