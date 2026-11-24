@@ -446,10 +446,9 @@
 
   <script>
     let enteredPin = "";
-    const DEFAULT_PIN = "742918";
 
     // Auto-login if previously verified
-    if (localStorage.getItem("mromih_dash_auth") === "valid") {
+    if (localStorage.getItem("mromih_dash_auth")) {
       document.getElementById("pinOverlay").classList.add("hidden");
     }
 
@@ -483,19 +482,13 @@
         });
         const data = await res.json();
         if (data.success) {
-          localStorage.setItem("mromih_dash_auth", "valid");
+          localStorage.setItem("mromih_dash_auth", data.token || "authenticated");
           document.getElementById("pinOverlay").classList.add("hidden");
         } else {
           showError();
         }
       } catch (e) {
-        // Fallback for static client-side evaluation
-        if (enteredPin === DEFAULT_PIN) {
-          localStorage.setItem("mromih_dash_auth", "valid");
-          document.getElementById("pinOverlay").classList.add("hidden");
-        } else {
-          showError();
-        }
+        showError();
       }
     }
 

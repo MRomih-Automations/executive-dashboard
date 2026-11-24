@@ -12,12 +12,15 @@ module.exports = (req, res) => {
   }
 
   const { pin } = req.body || {};
-  const validPin = process.env.DASHBOARD_PIN || '742918';
+  const validPin = process.env.DASHBOARD_PIN;
+
+  if (!validPin) {
+    return res.status(500).json({ success: false, error: 'Server authentication PIN not configured in environment variables' });
+  }
 
   if (pin && pin.toString().trim() === validPin.toString().trim()) {
     const timestamp = Date.now();
-    // Simple deterministic session token
-    const sessionToken = Buffer.from(`auth_${timestamp}_${validPin}`).toString('base64');
+    const sessionToken = Buffer.from(`auth_${timestamp}_${validPin.slice(0, 3)}`).toString('base64');
     return res.status(200).json({ success: true, token: sessionToken });
   }
 
