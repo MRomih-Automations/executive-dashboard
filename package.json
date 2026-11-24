@@ -1,0 +1,9 @@
+{
+  "name": "mromih-executive-dashboard",
+  "version": "1.0.0",
+  "description": "Executive Command Dashboard for MRomih Automations Autonomous Revenue OS",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve ."
+  }
+}

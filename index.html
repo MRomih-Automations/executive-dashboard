@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MRomih Automations — Executive Command OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: rgba(18, 20, 29, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.25);
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 40px;
+    }
+
+    /* PIN OVERLAY */
+    #pinOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 10, 15, 0.94);
+      backdrop-filter: blur(16px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    #pinOverlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .pin-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 36px 28px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    .pin-shield {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 20px;
+      border-radius: 18px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+    .pin-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .pin-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+    .pin-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 32px;
+      letter-spacing: 12px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--card-border);
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .key-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 600;
+      padding: 16px 0;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .key-btn:active { background: rgba(16, 185, 129, 0.2); transform: scale(0.96); }
+
+    /* DASHBOARD WRAPPER */
+    .dashboard-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .brand-text h1 { font-size: 18px; font-weight: 700; }
+    .brand-text p { font-size: 12px; color: var(--text-muted); }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* METRICS GRID */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .metric-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.15); }
+    .metric-header { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px; }
+    .metric-value { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    .metric-sub { font-size: 12px; color: var(--accent); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+    /* SECTION HEADERS */
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* CARDS */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .channel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .channel-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .channel-title { font-size: 17px; font-weight: 700; }
+    .channel-tag { font-size: 11px; padding: 4px 10px; border-radius: 999px; font-weight: 600; }
+    .tag-live { background: rgba(16, 185, 129, 0.15); color: var(--accent); border: 1px solid rgba(16,185,129,0.3); }
+    .tag-review { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); border: 1px solid rgba(59,130,246,0.3); }
+    .tag-paused { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+    .channel-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 18px; }
+    .channel-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: gap 0.2s ease;
+    }
+    .channel-link:hover { gap: 10px; }
+
+    /* CLOUD CRON STATUS BANNER */
+    .cron-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 20px;
+      padding: 22px;
+      margin-bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .cron-info h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .cron-info p { font-size: 13px; color: var(--text-muted); }
+    .btn-tg {
+      background: #229ed9;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(34, 158, 217, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PIN GATE OVERLAY -->
+  <div id="pinOverlay">
+    <div class="pin-card">
+      <div class="pin-shield">🛡️</div>
+      <h2 class="pin-title">Executive Command</h2>
+      <p class="pin-subtitle">MRomih Automations — PIN Access</p>
+      <div class="pin-display" id="pinDisplay">······</div>
+      <div class="keypad">
+        <button class="key-btn" onclick="enterDigit('1')">1</button>
+        <button class="key-btn" onclick="enterDigit('2')">2</button>
+        <button class="key-btn" onclick="enterDigit('3')">3</button>
+        <button class="key-btn" onclick="enterDigit('4')">4</button>
+        <button class="key-btn" onclick="enterDigit('5')">5</button>
+        <button class="key-btn" onclick="enterDigit('6')">6</button>
+        <button class="key-btn" onclick="enterDigit('7')">7</button>
+        <button class="key-btn" onclick="enterDigit('8')">8</button>
+        <button class="key-btn" onclick="enterDigit('9')">9</button>
+        <button class="key-btn" onclick="clearPin()">C</button>
+        <button class="key-btn" onclick="enterDigit('0')">0</button>
+        <button class="key-btn" onclick="submitPin()">✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD CONTENT -->
+  <div class="dashboard-container" id="dashContent">
+    <header>
+      <div class="brand">
+        <div class="brand-logo">MR</div>
+        <div class="brand-text">
+          <h1>MRomih Automations OS</h1>
+          <p>Founder Executive Command Center</p>
+        </div>
+      </div>
+      <div class="status-badge">
+        <span class="pulse-dot"></span>
+        24/7 CLOUD ACTIVE
+      </div>
+    </header>
+
+    <!-- METRICS -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-header">
+          <span>Active Pipeline</span>
+          <span>💼</span>
+        </div>
+        <div class="metric-value">$13,750</div>
+        <div class="metric-sub">▲ 1 High-Ticket Brief + 1 Bounty</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span>Pending Escrow</span>
+          <span>⏳</span>
+        </div>
+        <div class="metric-value" style="color: #60a5fa;">$250</div>
+        <div class="metric-sub">AUREN PR #295 Under Review</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span>Cash Collected</span>
+          <span>💵</span>
+        </div>
+        <div class="metric-value" style="color: #34d399;">$0.00</div>
+        <div class="metric-sub">Day 1 Go-To-Market Mode</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span>Total Expenses</span>
+          <span>🛡️</span>
+        </div>
+        <div class="metric-value">$0.00</div>
+        <div class="metric-sub">100% Free / $0 Budget Preserved</div>
+      </div>
+    </div>
+
+    <!-- 24/7 CLOUD CRON BANNER -->
+    <div class="cron-banner">
+      <div class="cron-info">
+        <h3>🛰️ 24/7 Autonomous Cloud Scout Active</h3>
+        <p>Running on GitHub Actions cloud infrastructure every 30 minutes with zero PC dependency.</p>
+      </div>
+      <a href="https://t.me/RomihCO_bot" target="_blank" class="btn-tg">
+        <span>✈️</span> Open @RomihCO_bot
+      </a>
+    </div>
+
+    <!-- REVENUE VEHICLES -->
+    <h2 class="section-title">⚡ Live Monetization Vehicles</h2>
+    <div class="card-grid">
+      <div class="channel-card">
+        <div>
+          <div class="channel-top">
+            <h3 class="channel-title">Contra Storefront</h3>
+            <span class="channel-tag tag-live">0% Commission</span>
+          </div>
+          <p class="channel-desc">
+            • Service 1: Custom n8n AI Lead Triage ($750 fixed)<br>
+            • Service 2: Python Web Scraping Pipeline ($350 fixed)<br>
+            • Lead: Ghost Note Salesforce Email Journey ($13,500)
+          </p>
+        </div>
+        <a href="https://contra.com/mohamed_romih_jj5w3q2x" target="_blank" class="channel-link">View Contra Storefront →</a>
+      </div>
+
+      <div class="channel-card">
+        <div>
+          <div class="channel-top">
+            <h3 class="channel-title">Fiverr Storefront</h3>
+            <span class="channel-tag tag-live">2 Gigs Live</span>
+          </div>
+          <p class="channel-desc">
+            • Gig 1: Custom n8n workflows & AI triage agents ($150–$750)<br>
+            • Gig 2: Resilient Python web scrapers ($150–$350)<br>
+            • Seller: @mromih7 (Mohamed Romih)
+          </p>
+        </div>
+        <a href="https://www.fiverr.com/mromih7" target="_blank" class="channel-link">View Fiverr Profile →</a>
+      </div>
+
+      <div class="channel-card">
+        <div>
+          <div class="channel-top">
+            <h3 class="channel-title">Polar / Algora Bounty</h3>
+            <span class="channel-tag tag-review">$250 Escrow Open</span>
+          </div>
+          <p class="channel-desc">
+            • Target: Ayush441-python/AUREN #275 (ETH valuation bug)<br>
+            • Status: Official PR #295 Open (28/28 tests passed)<br>
+            • Payout: Automatically released to Stripe Connect upon merge
+          </p>
+        </div>
+        <a href="https://github.com/Ayush441-python/AUREN/pull/295" target="_blank" class="channel-link">Inspect Open PR #295 →</a>
+      </div>
+
+      <div class="channel-card">
+        <div>
+          <div class="channel-top">
+            <h3 class="channel-title">Upwork Profile</h3>
+            <span class="channel-tag tag-paused">Organic Inbound Only</span>
+          </div>
+          <p class="channel-desc">
+            • Profile: Autonomous Automation & AI Engineer ($65.00/hr)<br>
+            • Status: Active for inbound client invites<br>
+            • Outbound bidding paused until $15+ USD earned to fund Connects organically.
+          </p>
+        </div>
+        <a href="https://www.upwork.com/freelancers/~0134d9d54438f71a66" target="_blank" class="channel-link">View Upwork Profile →</a>
+      </div>
+    </div>
+
+    <!-- AUTONOMOUS HEALTH & TELEMETRY -->
+    <h2 class="section-title">🤖 Cloud Sub-Agent Status</h2>
+    <div class="card-grid">
+      <div class="channel-card">
+        <div>
+          <div class="channel-top">
+            <h3 class="channel-title">Cloud Scout Worker</h3>
+            <span class="channel-tag tag-live">Active (30m Cron)</span>
+          </div>
+          <p class="channel-desc">
+            Scans GitHub issue comments for verified Algora escrow bots (<60 days old, 0 competing PRs). Alerts phone instantly.
+          </p>
+        </div>
+        <span style="font-size: 12px; color: var(--accent); font-family: 'JetBrains Mono', monospace;">Last Run: 13s / Succeeded</span>
+      </div>
+
+      <div class="channel-card">
+        <div>
+          <div class="channel-top">
+            <h3 class="channel-title">Telegram Push Bridge</h3>
+            <span class="channel-tag tag-live">Connected</span>
+          </div>
+          <p class="channel-desc">
+            Routes verified job leads, PR status changes, and daily executive summaries straight to Chat ID 1048991933.
+          </p>
+        </div>
+        <span style="font-size: 12px; color: var(--accent); font-family: 'JetBrains Mono', monospace;">Target: @MOhamedROmih</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let enteredPin = "";
+    const DEFAULT_PIN = "742918";
+
+    // Auto-login if previously verified
+    if (localStorage.getItem("mromih_dash_auth") === "valid") {
+      document.getElementById("pinOverlay").classList.add("hidden");
+    }
+
+    function enterDigit(d) {
+      if (enteredPin.length < 6) {
+        enteredPin += d;
+        updateDisplay();
+        if (enteredPin.length === 6) {
+          submitPin();
+        }
+      }
+    }
+
+    function clearPin() {
+      enteredPin = "";
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      const display = document.getElementById("pinDisplay");
+      display.textContent = enteredPin.length === 0 ? "······" : enteredPin.padEnd(6, '·');
+    }
+
+    async function submitPin() {
+      const display = document.getElementById("pinDisplay");
+      try {
+        const res = await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: enteredPin })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem("mromih_dash_auth", "valid");
+          document.getElementById("pinOverlay").classList.add("hidden");
+        } else {
+          showError();
+        }
+      } catch (e) {
+        // Fallback for static client-side evaluation
+        if (enteredPin === DEFAULT_PIN) {
+          localStorage.setItem("mromih_dash_auth", "valid");
+          document.getElementById("pinOverlay").classList.add("hidden");
+        } else {
+          showError();
+        }
+      }
+    }
+
+    function showError() {
+      const display = document.getElementById("pinDisplay");
+      display.style.color = "var(--danger)";
+      display.textContent = "INVALID";
+      setTimeout(() => {
+        enteredPin = "";
+        display.style.color = "var(--accent)";
+        updateDisplay();
+      }, 900);
+    }
+  </script>
+</body>
+</html>
