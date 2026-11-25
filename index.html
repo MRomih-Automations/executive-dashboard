@@ -348,6 +348,46 @@
       </a>
     </div>
 
+    <!-- INTERACTIVE CONTROL CENTER -->
+    <h2 class="section-title">🎮 Executive Control Center</h2>
+    <div class="control-panel" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 22px; margin-bottom: 28px; backdrop-filter: blur(12px);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+        <div>
+          <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">⚡ Instant Cloud Scout Dispatch</h3>
+          <p style="font-size: 13px; color: var(--text-muted);">Trigger an on-demand GitHub Actions scan across Algora & bounty markets.</p>
+        </div>
+        <button id="btnTriggerScout" onclick="triggerCloudScout()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 12px; padding: 12px 20px; font-weight: 700; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px var(--accent-glow);">
+          <span>🚀</span> <span id="triggerBtnText">Trigger Cloud Scout Now</span>
+        </button>
+      </div>
+
+      <!-- UPWORK CONNECTS UNLOCK PROGRESS -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Upwork Connects Unlock Progress</span>
+          <span id="connectsUnlockLabel" style="font-size: 12px; font-weight: 700; color: #60a5fa; font-family: 'JetBrains Mono', monospace;">$0.00 / $15.00 (0%)</span>
+        </div>
+        <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; margin-bottom: 12px;">
+          <div id="connectsProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); border-radius: 999px; transition: width 0.5s ease;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <span style="font-size: 12px; color: var(--text-muted);">Goal: $15+ collected revenue to organically unlock Upwork bidding.</span>
+          <button onclick="logRevenuePrompt()" style="background: rgba(255,255,255,0.08); border: 1px solid var(--card-border); color: var(--text); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;">+ Log Deal / Payment</button>
+        </div>
+      </div>
+
+      <!-- STAGED PROPOSALS ACCORDION -->
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="font-size: 14px; font-weight: 700;">📋 Staged Proposals (1-Tap Copy)</h4>
+          <span id="copyToast" style="font-size: 11px; color: var(--accent); font-weight: 600; display: none;">✓ Copied to clipboard!</span>
+        </div>
+        <div id="proposalsList" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- REVENUE VEHICLES -->
     <h2 class="section-title">⚡ Live Monetization Vehicles</h2>
     <div class="card-grid">
@@ -531,8 +571,113 @@
       }
     }
 
+    async function triggerCloudScout() {
+      const btn = document.getElementById("btnTriggerScout");
+      const txt = document.getElementById("triggerBtnText");
+      btn.disabled = true;
+      txt.textContent = "Dispatching Runner...";
+      try {
+        const res = await fetch("/api/trigger-scout", { method: "POST" });
+        const d = await res.json();
+        if (d.success) {
+          txt.textContent = "✓ Dispatched! Alert Incoming";
+          setTimeout(() => {
+            txt.textContent = "Trigger Cloud Scout Now";
+            btn.disabled = false;
+            loadTelemetry();
+          }, 6000);
+        } else {
+          txt.textContent = "Error: " + (d.error || "Failed");
+          setTimeout(() => { txt.textContent = "Trigger Cloud Scout Now"; btn.disabled = false; }, 4000);
+        }
+      } catch (e) {
+        txt.textContent = "Network Error";
+        setTimeout(() => { txt.textContent = "Trigger Cloud Scout Now"; btn.disabled = false; }, 3000);
+      }
+    }
+
+    async function loadRevenue() {
+      try {
+        const res = await fetch("/api/revenue");
+        if (!res.ok) return;
+        const d = await res.json();
+        const label = document.getElementById("connectsUnlockLabel");
+        const bar = document.getElementById("connectsProgressBar");
+        if (label && bar) {
+          label.textContent = d.status_label;
+          bar.style.width = d.progress_percent + "%";
+          if (d.is_unlocked) {
+            bar.style.background = "linear-gradient(90deg, #10b981, #059669)";
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function logRevenuePrompt() {
+      const amount = prompt("Enter collected deal amount in USD (e.g. 150):");
+      if (!amount || isNaN(parseFloat(amount))) return;
+      const client = prompt("Enter client / platform name (e.g. Contra - Ghost Note):") || "Direct Client";
+      try {
+        const res = await fetch("/api/revenue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: parseFloat(amount), client: client })
+        });
+        if (res.ok) {
+          loadRevenue();
+        }
+      } catch (e) {}
+    }
+
+    let stagedProposals = [];
+    async function loadProposals() {
+      try {
+        const res = await fetch("/api/proposals");
+        if (!res.ok) return;
+        stagedProposals = await res.json();
+        const container = document.getElementById("proposalsList");
+        if (!container) return;
+        container.innerHTML = stagedProposals.map((p, idx) => `
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(59,130,246,0.15); color: #60a5fa; font-weight: 700; margin-right: 6px;">${p.platform}</span>
+                <strong style="font-size: 13px;">${p.title}</strong>
+                <span style="font-size: 12px; color: var(--accent); margin-left: 6px; font-family: 'JetBrains Mono', monospace;">${p.rate}</span>
+              </div>
+              <button onclick="copyProposal(${idx}, this)" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: var(--accent); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                <span>📋</span> Copy Text
+              </button>
+            </div>
+            <pre style="font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; white-space: pre-wrap; max-height: 80px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;">${p.text}</pre>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    function copyProposal(idx, btn) {
+      if (!stagedProposals[idx]) return;
+      navigator.clipboard.writeText(stagedProposals[idx].text).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = "<span>✓</span> Copied!";
+        btn.style.background = "rgba(16,185,129,0.3)";
+        const toast = document.getElementById("copyToast");
+        if (toast) {
+          toast.style.display = "inline";
+          setTimeout(() => { toast.style.display = "none"; }, 2000);
+        }
+        setTimeout(() => {
+          btn.innerHTML = orig;
+          btn.style.background = "rgba(16,185,129,0.15)";
+        }, 2000);
+      });
+    }
+
     loadTelemetry();
+    loadRevenue();
+    loadProposals();
     setInterval(loadTelemetry, 30000);
+    setInterval(loadRevenue, 30000);
   </script>
 </body>
 </html>
